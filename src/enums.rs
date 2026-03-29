@@ -256,7 +256,9 @@ pub enum SaveSlot {
     Five = 5,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, EnumIter, FromRepr)]
+#[derive(
+    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, EnumIter, FromRepr, Display,
+)]
 #[repr(u8)]
 pub enum Difficulty {
     Harmless = 0,
@@ -264,6 +266,8 @@ pub enum Difficulty {
     #[default]
     Standard = 2,
     Violent = 3,
+    #[strum(to_string = "Brutal")]
+    Brutal = 4,
 }
 
 impl FromStr for Difficulty {
@@ -539,8 +543,8 @@ impl Level {
         match self {
             Self::IntoTheFire => 5,
             Self::TheMeatgrinder => 5,
-            Self::DoubleDown => 3,
-            Self::AOneMachineArmy => 3,
+            Self::DoubleDown => 5,
+            Self::AOneMachineArmy => 5,
             Self::Cerberus => 0,
             Self::HeartOfTheSunrise => 5,
             Self::TheBurningWorld => 5,

@@ -1,5 +1,5 @@
 use crate::{
-    class::classes::Classes,
+    class::{classes::Classes, general::GeneralData, level::LevelData},
     enums::{Act, Difficulty, Level, LevelRank, Lockable, SaveSlot, SecretLevel, WeaponType},
 };
 use eframe::{
@@ -18,17 +18,72 @@ pub struct SaveEditorApp {
     save_slot: SaveSlot,
     path_edit: String,
     load_enabled: bool,
-    save_enabled: bool,
     difficulty: Difficulty,
 }
 
-impl<'a> SaveEditorApp {
+impl SaveEditorApp {
+    fn mark_all_dirty(&mut self) {
+        if let Some(classes) = &mut self.classes {
+            classes.general.dirty = true;
+            classes.cybergrind.dirty = true;
+            for data in classes.difficulty.values_mut() {
+                data.dirty = true;
+            }
+            for data in classes.levels.values_mut() {
+                data.dirty = true;
+            }
+        }
+    }
+
+    fn save_dirty(&self) {
+        let save_dir = match self.resolved_save_path() {
+            Some(p) => p,
+            None => return,
+        };
+        let classes = match &self.classes {
+            Some(c) => c,
+            None => return,
+        };
+
+        if classes.general.dirty && classes.general.decoded {
+            let _ = classes.general.save_to(&save_dir);
+        }
+        if classes.cybergrind.dirty && classes.cybergrind.decoded {
+            let _ = classes.cybergrind.save_to(&save_dir);
+        }
+        for (diff, data) in &classes.difficulty {
+            if data.dirty && data.decoded {
+                let _ = data.save_to(diff, &save_dir);
+            }
+        }
+        for (level, data) in &classes.levels {
+            if data.dirty && data.decoded {
+                let _ = data.save_to(level, &save_dir);
+            }
+        }
+    }
+
+    fn clear_dirty(&mut self) {
+        if let Some(classes) = &mut self.classes {
+            classes.general.dirty = false;
+            classes.cybergrind.dirty = false;
+            for data in classes.difficulty.values_mut() {
+                data.dirty = false;
+            }
+            for data in classes.levels.values_mut() {
+                data.dirty = false;
+            }
+        }
+    }
+
     fn resolved_save_path(&self) -> Option<PathBuf> {
         let path = self.save_path.as_ref()?;
         let slot_folder = format!("Slot{}", self.save_slot as u8);
 
         if path.ends_with(&slot_folder) {
             Some(path.clone())
+        } else if path.join(&slot_folder).exists() || !path.exists() {
+            Some(path.join(&slot_folder))
         } else {
             Some(path.join(&slot_folder))
         }
@@ -38,18 +93,15 @@ impl<'a> SaveEditorApp {
         let save_path = detect_save_path(&SaveSlot::One);
         let load_enabled = save_path.is_some();
         let classes;
-        let save_enabled;
         let path_edit;
         match &save_path {
             Some(save_path) => {
                 classes = Classes::load(save_path);
                 path_edit = save_path.to_string_lossy().to_string();
-                save_enabled = true;
             }
             None => {
                 classes = None;
                 path_edit = String::new();
-                save_enabled = false;
             }
         };
 
@@ -60,7 +112,6 @@ impl<'a> SaveEditorApp {
             save_slot: SaveSlot::One,
             path_edit,
             load_enabled,
-            save_enabled,
             difficulty: Difficulty::Standard,
         }
     }
@@ -102,11 +153,7 @@ impl<'a> SaveEditorApp {
                 .show_ui(ui, |ui| {
                     ui.selectable_value(&mut self.save_slot, SaveSlot::One, "1");
                     ui.selectable_value(&mut self.save_slot, SaveSlot::Two, "2");
-                    ui.selectable_value(
-                        &mut self.save_slot,
-                        SaveSlot::Three,
-                        "3",
-                    );
+                    ui.selectable_value(&mut self.save_slot, SaveSlot::Three, "3");
                     ui.selectable_value(&mut self.save_slot, SaveSlot::Four, "4");
                     ui.selectable_value(&mut self.save_slot, SaveSlot::Five, "5");
                 });
@@ -126,61 +173,30 @@ impl<'a> SaveEditorApp {
                 .clicked()
             {
                 if let Some(save_path) = self.resolved_save_path() {
-                    self.save_enabled = match Classes::load(&save_path) {
-                        Some(classes) => {
-                            self.classes = Some(classes);
-                            true
-                        }
-                        None => false,
-                    };
+                    self.classes = Classes::load(&save_path);
                 };
             }
 
-            if ui
-                .add_enabled(self.save_enabled, Button::new("Save"))
-                .clicked()
-            {
-                if let Some(save_path) = self.resolved_save_path() {
-                    if let Some(classes) = &self.classes {
-                        classes.save(&save_path).ok();
-                    }
-                }
-            }
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                ui.add_space(10.0);
 
-            ui.with_layout(
-                Layout::right_to_left(Align::Center),
-                |ui| {
-                    ui.add_space(10.0);
+                ComboBox::from_id_source("difficulty_selector")
+                    .selected_text(self.difficulty.to_string())
+                    .width(100.0)
+                    .show_ui(ui, |ui| {
+                        for diff in Difficulty::iter() {
+                            ui.selectable_value(&mut self.difficulty, diff, diff.to_string());
+                        }
+                    });
 
-                    ui.radio_value(
-                        &mut self.difficulty,
-                        Difficulty::Violent,
-                        "Violent",
-                    );
-                    ui.radio_value(
-                        &mut self.difficulty,
-                        Difficulty::Standard,
-                        "Standard",
-                    );
-                    ui.radio_value(
-                        &mut self.difficulty,
-                        Difficulty::Lenient,
-                        "Lenient",
-                    );
-                    ui.radio_value(
-                        &mut self.difficulty,
-                        Difficulty::Harmless,
-                        "Harmless",
-                    );
-
-                    ui.label("Difficulty: ");
-                },
-            );
+                ui.label("Difficulty: ");
+            });
         });
     }
 
     fn update_single_level(&mut self, ui: &mut Ui, level: &Level) -> Option<()> {
         let difficulty = self.difficulty as usize;
+        let save_dir = self.resolved_save_path();
 
         let classes = self.classes.as_mut()?;
         let level_data = classes.levels.get_mut(level)?;
@@ -243,7 +259,7 @@ impl<'a> SaveEditorApp {
             });
         }
 
-        if level_data.secrets_found.len() > 0 {
+        if !level_data.secrets_found.is_empty() {
             ui.horizontal(|ui| {
                 ui.label("Secrets found: ");
                 for secret in &mut level_data.secrets_found {
@@ -259,33 +275,30 @@ impl<'a> SaveEditorApp {
 
         ui.horizontal(|ui| {
             ui.label("Used major assists:");
-            ui.checkbox(
-                level_data.major_assists.get_mut(difficulty)?,
-                "",
-            );
+            ui.checkbox(level_data.major_assists.get_mut(difficulty)?, "");
 
             Some(())
         });
 
         ui.horizontal(|ui| {
             if ui
-                .add_enabled(
-                    !level_data.file_exists,
-                    Button::new("Create file"),
-                )
+                .add_enabled(!level_data.file_exists, Button::new("Create file"))
                 .clicked()
             {
-                level_data.file_exists = true
+                level_data.file_exists = true;
+                if let Some(ref dir) = save_dir {
+                    let _ = level_data.save_to(level, dir);
+                }
             }
 
             if ui
-                .add_enabled(
-                    level_data.file_exists,
-                    Button::new("Delete file"),
-                )
+                .add_enabled(level_data.file_exists, Button::new("Delete file"))
                 .clicked()
             {
-                level_data.file_exists = false
+                level_data.file_exists = false;
+                if let Some(ref dir) = save_dir {
+                    LevelData::delete_from(level, dir);
+                }
             }
         });
 
@@ -305,16 +318,13 @@ impl<'a> SaveEditorApp {
                         .secret_missions
                         .get_mut(&secret_level)?;
 
-                    ComboBox::from_id_source(format!(
-                        "secret_level {} state",
-                        *secret_level as u8
-                    ))
-                    .selected_text(state.to_string())
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(state, Lockable::Locked, "Locked");
-                        ui.selectable_value(state, Lockable::Unlocked, "Unlocked");
-                        ui.selectable_value(state, Lockable::Completed, "Completed");
-                    });
+                    ComboBox::from_id_source(format!("secret_level {} state", *secret_level as u8))
+                        .selected_text(state.to_string())
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(state, Lockable::Locked, "Locked");
+                            ui.selectable_value(state, Lockable::Unlocked, "Unlocked");
+                            ui.selectable_value(state, Lockable::Completed, "Completed");
+                        });
 
                     Some(())
                 });
@@ -349,6 +359,8 @@ impl<'a> SaveEditorApp {
     }
 
     fn update_general(&mut self, ui: &mut Ui) {
+        let save_dir = self.resolved_save_path();
+
         ui.group(|ui| {
             let available_width = ui.available_width();
             ui.heading("General data");
@@ -378,10 +390,7 @@ impl<'a> SaveEditorApp {
 
             ui.horizontal(|ui| {
                 ui.label("Clash mode unlocked:");
-                ui.checkbox(
-                    &mut classes.general.clash_mode_unlocked,
-                    "",
-                );
+                ui.checkbox(&mut classes.general.clash_mode_unlocked, "");
             });
 
             ui.collapsing("Unlockables", |ui| {
@@ -413,10 +422,10 @@ impl<'a> SaveEditorApp {
                             ui.columns(2, |column| {
                                 column[0].add_space(1.0);
                                 if let Some(customizable) = weapon.get_customizable() {
-                                    column[0].with_layout(
-                                        Layout::right_to_left(Align::Min),
-                                        |ui| ui.label("Customizable:"),
-                                    );
+                                    column[0]
+                                        .with_layout(Layout::right_to_left(Align::Min), |ui| {
+                                            ui.label("Customizable:")
+                                        });
                                     column[0].add_space(3.625);
                                     column[1].checkbox(
                                         classes
@@ -428,10 +437,10 @@ impl<'a> SaveEditorApp {
                                 }
 
                                 for variant in weapon.get_unlockable_variants() {
-                                    column[0].with_layout(
-                                        Layout::right_to_left(Align::Min),
-                                        |ui| ui.label(variant.to_string() + " Unlocked:"),
-                                    );
+                                    column[0]
+                                        .with_layout(Layout::right_to_left(Align::Min), |ui| {
+                                            ui.label(variant.to_string() + " Unlocked:")
+                                        });
                                     column[0].add_space(3.625);
                                     column[1].checkbox(
                                         classes.general.unlocked_weapons.get_mut(&variant)?,
@@ -452,37 +461,33 @@ impl<'a> SaveEditorApp {
                     ui.columns(2, |column| {
                         column[0].add_space(1.0);
                         for (enemy_type, state) in classes.general.enemies_discovered.iter_mut() {
-                            column[0].with_layout(
-                                Layout::right_to_left(Align::Min),
-                                |ui| ui.label(enemy_type.to_string() + ":"),
-                            );
+                            column[0].with_layout(Layout::right_to_left(Align::Min), |ui| {
+                                ui.label(enemy_type.to_string() + ":")
+                            });
                             column[0].add_space(3.625);
 
-                            ComboBox::from_id_source(format!(
-                                "enemy {} state",
-                                *enemy_type as u8
-                            ))
-                            .width(140.0)
-                            .selected_text(match state {
-                                Lockable::Locked => "Undiscovered",
-                                Lockable::Unlocked => "Partially Discovered",
-                                Lockable::Completed => "Fully Discovered",
-                            })
-                            .show_ui(&mut column[1], |ui| {
-                                ui.selectable_value(state, Lockable::Locked, "Undiscovered");
-                                ui.selectable_value(
-                                    state,
-                                    Lockable::Unlocked,
-                                    "Partially Discovered",
-                                );
-                                ui.selectable_value(
-                                    state,
-                                    Lockable::Completed,
-                                    "Fully Discovered",
-                                );
+                            ComboBox::from_id_source(format!("enemy {} state", *enemy_type as u8))
+                                .width(140.0)
+                                .selected_text(match state {
+                                    Lockable::Locked => "Undiscovered",
+                                    Lockable::Unlocked => "Partially Discovered",
+                                    Lockable::Completed => "Fully Discovered",
+                                })
+                                .show_ui(&mut column[1], |ui| {
+                                    ui.selectable_value(state, Lockable::Locked, "Undiscovered");
+                                    ui.selectable_value(
+                                        state,
+                                        Lockable::Unlocked,
+                                        "Partially Discovered",
+                                    );
+                                    ui.selectable_value(
+                                        state,
+                                        Lockable::Completed,
+                                        "Fully Discovered",
+                                    );
 
-                                Some(())
-                            });
+                                    Some(())
+                                });
                         }
                     });
                 });
@@ -492,23 +497,23 @@ impl<'a> SaveEditorApp {
 
             ui.horizontal(|ui| {
                 if ui
-                    .add_enabled(
-                        !classes.general.file_exists,
-                        Button::new("Create file"),
-                    )
+                    .add_enabled(!classes.general.file_exists, Button::new("Create file"))
                     .clicked()
                 {
-                    classes.general.file_exists = true
+                    classes.general.file_exists = true;
+                    if let Some(ref dir) = save_dir {
+                        let _ = classes.general.save_to(dir);
+                    }
                 }
 
                 if ui
-                    .add_enabled(
-                        classes.general.file_exists,
-                        Button::new("Delete file"),
-                    )
+                    .add_enabled(classes.general.file_exists, Button::new("Delete file"))
                     .clicked()
                 {
-                    classes.general.file_exists = false
+                    classes.general.file_exists = false;
+                    if let Some(ref dir) = save_dir {
+                        GeneralData::delete_from(dir);
+                    }
                 }
             });
 
@@ -537,40 +542,30 @@ impl<'a> SaveEditorApp {
             ui.set_width(200.0);
             ui.columns(2, |column| {
                 column[0].add_space(1.0);
-                column[0].with_layout(
-                    Layout::right_to_left(Align::Min),
-                    |ui| ui.label("Wave: "),
-                );
+                column[0].with_layout(Layout::right_to_left(Align::Min), |ui| ui.label("Wave: "));
 
                 if column[1].text_edit_singleline(wave).changed() {
                     validate_f32(wave);
                 }
 
                 column[0].add_space(4.0);
-                column[0].with_layout(
-                    Layout::right_to_left(Align::Min),
-                    |ui| ui.label("Kills: "),
-                );
+                column[0].with_layout(Layout::right_to_left(Align::Min), |ui| ui.label("Kills: "));
 
                 if column[1].text_edit_singleline(kills).changed() {
                     validate_u32(kills);
                 }
 
                 column[0].add_space(4.0);
-                column[0].with_layout(
-                    Layout::right_to_left(Align::Min),
-                    |ui| ui.label("Style: "),
-                );
+                column[0].with_layout(Layout::right_to_left(Align::Min), |ui| ui.label("Style: "));
 
                 if column[1].text_edit_singleline(style).changed() {
                     validate_u32(style);
                 }
 
                 column[0].add_space(4.0);
-                column[0].with_layout(
-                    Layout::right_to_left(Align::Min),
-                    |ui| ui.label("Time (seconds): "),
-                );
+                column[0].with_layout(Layout::right_to_left(Align::Min), |ui| {
+                    ui.label("Time (seconds): ")
+                });
 
                 if column[1].text_edit_singleline(time).changed() {
                     validate_f32(time);
@@ -578,10 +573,7 @@ impl<'a> SaveEditorApp {
 
                 column[0].add_space(7.0);
                 if column[0]
-                    .add_enabled(
-                        !classes.cybergrind.file_exists,
-                        Button::new("Create file"),
-                    )
+                    .add_enabled(!classes.cybergrind.file_exists, Button::new("Create file"))
                     .clicked()
                 {
                     classes.cybergrind.file_exists = true;
@@ -589,10 +581,7 @@ impl<'a> SaveEditorApp {
 
                 column[1].add_space(4.0);
                 if column[1]
-                    .add_enabled(
-                        classes.cybergrind.file_exists,
-                        Button::new("Delete file"),
-                    )
+                    .add_enabled(classes.cybergrind.file_exists, Button::new("Delete file"))
                     .clicked()
                 {
                     classes.cybergrind.file_exists = false;
@@ -608,6 +597,13 @@ impl<'a> SaveEditorApp {
 
 impl App for SaveEditorApp {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        let interacted =
+            ctx.input(|i| i.pointer.any_click() || i.pointer.any_down() || !i.events.is_empty());
+
+        if interacted {
+            self.mark_all_dirty();
+        }
+
         CentralPanel::default().show(ctx, |ui| {
             self.update_top_bar(ui);
             ui.separator();
@@ -626,15 +622,15 @@ impl App for SaveEditorApp {
                 });
             });
         });
+
+        self.save_dirty();
+        self.clear_dirty();
     }
 }
 
 fn detect_save_path(save_slot: &SaveSlot) -> Option<PathBuf> {
     let regkey = Hive::LocalMachine
-        .open(
-            r"SOFTWARE\WOW6432Node\Valve\Steam",
-            Security::Read,
-        )
+        .open(r"SOFTWARE\WOW6432Node\Valve\Steam", Security::Read)
         .ok()?;
 
     let data = regkey.value("InstallPath").ok()?;
