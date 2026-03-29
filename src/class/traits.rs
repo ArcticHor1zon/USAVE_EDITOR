@@ -29,7 +29,6 @@ where
     fn parse(class: &Class) -> Option<Self>;
     fn unparse(&self) -> Option<FieldMap>;
     fn get_file_exists(&self) -> bool;
-    fn set_file_exists(&mut self, exists: bool);
 }
 pub(super) trait ParsableClassKeyed<T: FromStr + IntoEnumIterator + Ord + IntoFileInfix>
 where
@@ -43,7 +42,6 @@ where
     fn parse(class: &Class) -> Option<Self>;
     fn unparse(&self, variant: &T) -> Option<FieldMap>;
     fn get_file_exists(&self) -> bool;
-    fn set_file_exists(&mut self, exists: bool);
 }
 
 pub(super) trait LoadableSavable {
@@ -55,16 +53,12 @@ impl<T: ParsableClass> LoadableSavable for T {
     fn load<P: AsRef<Path>>(save_path: P) -> Self {
         let path = save_path.as_ref().join(Self::FILE_NAME);
 
-        if let Ok(mut file) = File::open(&path) {
+        if let Ok(mut file) = File::open(path) {
             if let Ok(stream) = Stream::decode(&mut file) {
                 if let Some(value) = Self::parse(&stream.root) {
                     return value;
                 }
             }
-            // File exists but couldn't parse
-            let mut default = Self::default();
-            default.set_file_exists(true);
-            return default;
         }
 
         Self::default()
@@ -108,18 +102,13 @@ impl<V: FromStr + IntoEnumIterator + Ord + IntoFileInfix, T: ParsableClassKeyed<
                 T::FILE_SUFFIX
             ));
 
-            if let Ok(mut file) = File::open(&path) {
+            if let Ok(mut file) = File::open(path) {
                 if let Ok(stream) = Stream::decode(&mut file) {
                     if let Some(value) = T::parse(&stream.root) {
                         map.insert(variant, value);
                         continue;
                     }
                 }
-                // File exists but couldn't parse
-                let mut value = T::create_new(&variant);
-                value.set_file_exists(true);
-                map.insert(variant, value);
-                continue;
             }
 
             let value = T::create_new(&variant);

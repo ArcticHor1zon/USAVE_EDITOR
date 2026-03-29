@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 eframe = "0.28"
-ms-nrbf = { path = "libs/ms-nrbf" }
+ms-nrbf = { git = "https://github.com/PyPylia/ms-nrbf" }
 registry = "1.2.3"
 strum = { version = "0.24.1", features = ["derive"] }
 indexmap = "2"

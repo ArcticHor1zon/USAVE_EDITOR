@@ -2,6 +2,6 @@ pub mod classes;
 pub mod cybergrind;
 pub mod difficulty;
 pub mod general;
-mod helpers;
 pub mod level;
+mod macros;
 pub mod traits;

@@ -256,9 +256,7 @@ pub enum SaveSlot {
     Five = 5,
 }
 
-#[derive(
-    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, EnumIter, FromRepr, Display,
-)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, EnumIter, FromRepr)]
 #[repr(u8)]
 pub enum Difficulty {
     Harmless = 0,
@@ -266,8 +264,6 @@ pub enum Difficulty {
     #[default]
     Standard = 2,
     Violent = 3,
-    #[strum(to_string = "Brutal")]
-    Brutal = 4,
 }
 
 impl FromStr for Difficulty {
@@ -308,19 +304,14 @@ pub enum SecretLevel {
     #[strum(to_string = "8-S: ???")]
     UnknownSecret8,
     UnknownPrime3,
-    EncorePlaceholder,
 }
 
 impl SecretLevel {
     pub fn is_prime(&self) -> bool {
-        matches!(
-            self,
-            Self::SoulSurvivor | Self::WaitOfTheWorld | Self::UnknownPrime3
-        )
-    }
-
-    pub fn is_encore(&self) -> bool {
-        matches!(self, Self::EncorePlaceholder)
+        match self {
+            Self::SoulSurvivor | Self::WaitOfTheWorld | Self::UnknownPrime3 => true,
+            _ => false,
+        }
     }
 }
 
@@ -335,8 +326,6 @@ pub enum Act {
     Act2,
     #[strum(to_string = "ACT III: GODFIST SUICIDE")]
     Act3,
-    #[strum(to_string = "ENCORE")]
-    Encore,
 }
 
 impl Act {
@@ -346,7 +335,6 @@ impl Act {
             Self::Act1 => &[Layer::Limbo, Layer::Lust, Layer::Gluttony],
             Self::Act2 => &[Layer::Greed, Layer::Wrath, Layer::Heresy],
             Self::Act3 => &[Layer::Violence, Layer::Fraud, Layer::Treachery],
-            Self::Encore => &[Layer::Encore],
         }
     }
 }
@@ -374,8 +362,6 @@ pub enum Layer {
     Fraud = 8,
     #[strum(to_string = "LAYER 9: TREACHERY")]
     Treachery = 9,
-    #[strum(to_string = "ENCORE")]
-    Encore = 10,
 }
 
 impl Layer {
@@ -435,7 +421,6 @@ impl Layer {
                 Level::FinalFlight,
             ],
             Self::Treachery => &[],
-            Self::Encore => &[Level::Encore0E, Level::Encore1E],
         }
     }
 
@@ -451,7 +436,6 @@ impl Layer {
             Self::Violence => SecretLevel::HellBathNoFury,
             Self::Fraud => SecretLevel::UnknownSecret8,
             Self::Treachery => SecretLevel::UnknownPrime3,
-            Self::Encore => SecretLevel::EncorePlaceholder,
         }
     }
 }
@@ -533,24 +517,14 @@ pub enum Level {
     SoulSurvivor = 666,
     #[strum(to_string = "P-2: WAIT OF THE WORLD")]
     WaitOfTheWorld = 667,
-
-    #[strum(to_string = "0-E: THIS HEAT, AN EVIL HEAT")]
-    Encore0E = 100,
-    #[strum(to_string = "1-E: ...THEN FELL THE ASHES")]
-    Encore1E = 101,
 }
 
 impl Level {
     pub fn is_prime(&self) -> bool {
-        matches!(self, Self::SoulSurvivor | Self::WaitOfTheWorld)
-    }
-
-    pub fn is_encore(&self) -> bool {
-        matches!(self, Self::Encore0E | Self::Encore1E)
-    }
-
-    pub fn has_challenge(&self) -> bool {
-        !self.is_encore()
+        match self {
+            Self::SoulSurvivor | Self::WaitOfTheWorld => true,
+            _ => false,
+        }
     }
 
     pub fn get_prime_index(&self) -> Option<u8> {
@@ -561,20 +535,12 @@ impl Level {
         }
     }
 
-    pub fn get_encore_index(&self) -> Option<u8> {
-        match self {
-            Self::Encore0E => Some(0),
-            Self::Encore1E => Some(1),
-            _ => None,
-        }
-    }
-
     pub fn get_secret_count(&self) -> u8 {
         match self {
             Self::IntoTheFire => 5,
             Self::TheMeatgrinder => 5,
-            Self::DoubleDown => 5,
-            Self::AOneMachineArmy => 5,
+            Self::DoubleDown => 3,
+            Self::AOneMachineArmy => 3,
             Self::Cerberus => 0,
             Self::HeartOfTheSunrise => 5,
             Self::TheBurningWorld => 5,
@@ -607,8 +573,6 @@ impl Level {
 
             Self::SoulSurvivor => 0,
             Self::WaitOfTheWorld => 0,
-            Self::Encore0E => 0,
-            Self::Encore1E => 0,
         }
     }
 }
