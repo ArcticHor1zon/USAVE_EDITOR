@@ -1,5 +1,6 @@
 use crate::{
     class::{classes::Classes, general::GeneralData, level::LevelData},
+    debug_log,
     enums::{Act, Difficulty, Level, LevelRank, Lockable, SaveSlot, SecretLevel, WeaponType},
 };
 use eframe::{
@@ -44,19 +45,37 @@ impl SaveEditorApp {
         };
 
         if classes.general.dirty && classes.general.decoded {
-            let _ = classes.general.save_to(&save_dir);
+            if let Err(e) = classes.general.save_to(&save_dir) {
+                debug_log!("error", "Save generalprogress.bepis failed: {}", e);
+            }
         }
         if classes.cybergrind.dirty && classes.cybergrind.decoded {
-            let _ = classes.cybergrind.save_to(&save_dir);
+            if let Err(e) = classes.cybergrind.save_to(&save_dir) {
+                debug_log!("error", "Save endlessprogress.bepis failed: {}", e);
+            }
         }
         for (diff, data) in &classes.difficulty {
             if data.dirty && data.decoded {
-                let _ = data.save_to(diff, &save_dir);
+                if let Err(e) = data.save_to(diff, &save_dir) {
+                    debug_log!(
+                        "error",
+                        "Save difficulty{}progress.bepis failed: {}",
+                        *diff as u8,
+                        e
+                    );
+                }
             }
         }
         for (level, data) in &classes.levels {
             if data.dirty && data.decoded {
-                let _ = data.save_to(level, &save_dir);
+                if let Err(e) = data.save_to(level, &save_dir) {
+                    debug_log!(
+                        "error",
+                        "Save lvl{}progress.bepis failed: {}",
+                        *level as u16,
+                        e
+                    );
+                }
             }
         }
     }
@@ -86,16 +105,25 @@ impl SaveEditorApp {
     }
 
     pub fn new(_cc: &CreationContext) -> Self {
+        debug_log!("info", "Application starting");
+
         let save_path = detect_save_path(&SaveSlot::One);
         let load_enabled = save_path.is_some();
         let classes;
         let path_edit;
         match &save_path {
             Some(save_path) => {
+                debug_log!("info", "Auto-detected save path: {}", save_path.display());
                 classes = Classes::load(save_path);
+                if classes.is_some() {
+                    debug_log!("info", "Save files loaded successfully");
+                } else {
+                    debug_log!("warn", "Failed to load save files");
+                }
                 path_edit = save_path.to_string_lossy().to_string();
             }
             None => {
+                debug_log!("info", "No save path detected");
                 classes = None;
                 path_edit = String::new();
             }
@@ -124,17 +152,35 @@ impl SaveEditorApp {
                 let path = Path::new(&self.path_edit);
                 self.load_enabled = path.exists();
                 self.save_path = if path.exists() {
+                    debug_log!("action", "Path set: {}", path.display());
                     Some(path.to_path_buf())
                 } else {
+                    debug_log!("warn", "Path does not exist: {}", path.display());
                     None
                 }
             }
 
             if ui.button("Auto-detect").clicked() {
+                debug_log!(
+                    "action",
+                    "Auto-detect clicked (slot {})",
+                    self.save_slot as u8
+                );
                 if let Some(save_path) = detect_save_path(&self.save_slot) {
                     self.path_edit = save_path.to_string_lossy().to_string();
                     self.save_path = Some(save_path);
                     self.load_enabled = true;
+                    debug_log!(
+                        "info",
+                        "Auto-detected: {}",
+                        self.save_path.as_ref().unwrap().display()
+                    );
+                } else {
+                    debug_log!(
+                        "warn",
+                        "Auto-detect failed for slot {}",
+                        self.save_slot as u8
+                    );
                 }
             }
 
@@ -155,10 +201,21 @@ impl SaveEditorApp {
                 });
 
             if self.save_slot != prev_slot {
+                debug_log!(
+                    "action",
+                    "Slot changed: {} -> {}",
+                    prev_slot as u8,
+                    self.save_slot as u8
+                );
                 if let Some(save_path) = detect_save_path(&self.save_slot) {
                     self.path_edit = save_path.to_string_lossy().to_string();
                     self.save_path = Some(save_path);
                     self.load_enabled = true;
+                    debug_log!(
+                        "info",
+                        "Auto-detected path: {}",
+                        self.save_path.as_ref().unwrap().display()
+                    );
                 }
             }
 
@@ -169,12 +226,21 @@ impl SaveEditorApp {
                 .clicked()
             {
                 if let Some(save_path) = self.resolved_save_path() {
+                    debug_log!("action", "Load clicked");
+                    debug_log!("file", "Loading from: {}", save_path.display());
                     self.classes = Classes::load(&save_path);
+                    if self.classes.is_some() {
+                        debug_log!("file", "Load successful");
+                    } else {
+                        debug_log!("error", "Load failed");
+                    }
                 };
             }
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.add_space(10.0);
+
+                let prev_diff = self.difficulty;
 
                 ComboBox::from_id_source("difficulty_selector")
                     .selected_text(self.difficulty.to_string())
@@ -184,6 +250,15 @@ impl SaveEditorApp {
                             ui.selectable_value(&mut self.difficulty, diff, diff.to_string());
                         }
                     });
+
+                if self.difficulty != prev_diff {
+                    debug_log!(
+                        "action",
+                        "Difficulty changed: {} -> {}",
+                        prev_diff,
+                        self.difficulty
+                    );
+                }
 
                 ui.label("Difficulty: ");
             });
@@ -213,6 +288,7 @@ impl SaveEditorApp {
                         || ui.selectable_value(rank, LevelRank::S, "S").clicked()
                         || ui.selectable_value(rank, LevelRank::P, "P").clicked()
                     {
+                        debug_log!("data", "{} rank -> {}", level, *rank);
                         level_data.dirty = true;
                     }
 
@@ -238,6 +314,7 @@ impl SaveEditorApp {
                             .selectable_value(state, Lockable::Locked, "Locked")
                             .clicked()
                         {
+                            debug_log!("data", "Prime {} state -> Locked", level);
                             difficulty_data.file_exists = true;
                             difficulty_data.dirty = true;
                         }
@@ -245,6 +322,7 @@ impl SaveEditorApp {
                             .selectable_value(state, Lockable::Unlocked, "Unlocked")
                             .clicked()
                         {
+                            debug_log!("data", "Prime {} state -> Unlocked", level);
                             difficulty_data.file_exists = true;
                             difficulty_data.dirty = true;
                         }
@@ -252,6 +330,7 @@ impl SaveEditorApp {
                             .selectable_value(state, Lockable::Completed, "Completed")
                             .clicked()
                         {
+                            debug_log!("data", "Prime {} state -> Completed", level);
                             difficulty_data.file_exists = true;
                             difficulty_data.dirty = true;
                         }
@@ -270,25 +349,6 @@ impl SaveEditorApp {
             });
         }
 
-        if level.has_challenge() {
-            ui.horizontal(|ui| {
-                ui.label("Challenge completed:");
-                if ui.checkbox(&mut level_data.challenge, "").changed() {
-                    level_data.dirty = true;
-                }
-            });
-        }
-
-        ui.horizontal(|ui| {
-            ui.label("Used major assists:");
-            let assists = level_data.major_assists.get_mut(difficulty)?;
-            if ui.checkbox(assists, "").changed() {
-                level_data.dirty = true;
-            }
-
-            Some(())
-        });
-
         ui.horizontal(|ui| {
             if ui
                 .add_enabled(!level_data.file_exists, Button::new("Create file"))
@@ -296,7 +356,12 @@ impl SaveEditorApp {
             {
                 level_data.file_exists = true;
                 if let Some(ref dir) = save_dir {
-                    let _ = level_data.save_to(level, dir);
+                    match level_data.save_to(level, dir) {
+                        Ok(_) => debug_log!("file", "Created: lvl{}progress.bepis", *level as u16),
+                        Err(e) => {
+                            debug_log!("error", "Create failed: lvl{} - {}", *level as u16, e)
+                        }
+                    }
                 }
             }
 
@@ -307,6 +372,7 @@ impl SaveEditorApp {
                 level_data.file_exists = false;
                 if let Some(ref dir) = save_dir {
                     LevelData::delete_from(level, dir);
+                    debug_log!("file", "Deleted: lvl{}progress.bepis", *level as u16);
                 }
             }
         });
@@ -330,9 +396,18 @@ impl SaveEditorApp {
                     ComboBox::from_id_source(format!("secret_level {} state", *secret_level as u8))
                         .selected_text(state.to_string())
                         .show_ui(ui, |ui| {
-                            ui.selectable_value(state, Lockable::Locked, "Locked");
-                            ui.selectable_value(state, Lockable::Unlocked, "Unlocked");
-                            ui.selectable_value(state, Lockable::Completed, "Completed");
+                            if ui
+                                .selectable_value(state, Lockable::Locked, "Locked")
+                                .clicked()
+                                || ui
+                                    .selectable_value(state, Lockable::Unlocked, "Unlocked")
+                                    .clicked()
+                                || ui
+                                    .selectable_value(state, Lockable::Completed, "Completed")
+                                    .clicked()
+                            {
+                                debug_log!("data", "{} state -> {}", secret_level, *state);
+                            }
                         });
 
                     Some(())
@@ -356,17 +431,32 @@ impl SaveEditorApp {
                     for act in Act::iter() {
                         ui.collapsing(act.to_string(), |ui| {
                             for layer in act.get_layers() {
-                                ui.collapsing(layer.to_string(), |ui| {
-                                    for level in layer.get_levels() {
-                                        ui.collapsing(level.to_string(), |ui| {
-                                            self.update_single_level(ui, level);
-                                        });
-                                    }
-                                    self.update_secret_level(ui, &layer.get_secret_level());
-                                });
+                                let regular_levels: Vec<_> = layer
+                                    .get_levels()
+                                    .iter()
+                                    .filter(|l| !l.is_prime())
+                                    .collect();
+                                if !regular_levels.is_empty() {
+                                    ui.collapsing(layer.to_string(), |ui| {
+                                        for level in regular_levels {
+                                            ui.collapsing(level.to_string(), |ui| {
+                                                self.update_single_level(ui, level);
+                                            });
+                                        }
+                                        self.update_secret_level(ui, &layer.get_secret_level());
+                                    });
+                                }
                             }
                         });
                     }
+
+                    ui.collapsing("PRIME SANCTUMS", |ui| {
+                        for level in [Level::SoulSurvivor, Level::WaitOfTheWorld] {
+                            ui.collapsing(level.to_string(), |ui| {
+                                self.update_single_level(ui, &level);
+                            });
+                        }
+                    });
                 });
         });
     }
@@ -388,6 +478,7 @@ impl SaveEditorApp {
                     .changed()
                 {
                     validate_u32(&mut classes.general.money);
+                    debug_log!("data", "Money -> {}", classes.general.money);
                     classes.general.dirty = true;
                 }
             });
@@ -395,6 +486,7 @@ impl SaveEditorApp {
             ui.horizontal(|ui| {
                 ui.label("Intro seen:");
                 if ui.checkbox(&mut classes.general.intro_seen, "").changed() {
+                    debug_log!("data", "Intro seen -> {}", classes.general.intro_seen);
                     classes.general.dirty = true;
                 }
             });
@@ -405,13 +497,23 @@ impl SaveEditorApp {
                     .checkbox(&mut classes.general.tutorial_beat, "")
                     .changed()
                 {
+                    debug_log!("data", "Tutorial beat -> {}", classes.general.tutorial_beat);
                     classes.general.dirty = true;
                 }
             });
 
             ui.horizontal(|ui| {
                 ui.label("Clash mode unlocked:");
-                ui.checkbox(&mut classes.general.clash_mode_unlocked, "");
+                if ui
+                    .checkbox(&mut classes.general.clash_mode_unlocked, "")
+                    .changed()
+                {
+                    debug_log!(
+                        "data",
+                        "Clash mode -> {}",
+                        classes.general.clash_mode_unlocked
+                    );
+                }
             });
 
             ui.collapsing("Unlockables", |ui| {
@@ -512,7 +614,12 @@ impl SaveEditorApp {
                 {
                     classes.general.file_exists = true;
                     if let Some(ref dir) = save_dir {
-                        let _ = classes.general.save_to(dir);
+                        match classes.general.save_to(dir) {
+                            Ok(_) => debug_log!("file", "Created: generalprogress.bepis"),
+                            Err(e) => {
+                                debug_log!("error", "Create failed: generalprogress.bepis - {}", e)
+                            }
+                        }
                     }
                 }
 
@@ -523,6 +630,7 @@ impl SaveEditorApp {
                     classes.general.file_exists = false;
                     if let Some(ref dir) = save_dir {
                         GeneralData::delete_from(dir);
+                        debug_log!("file", "Deleted: generalprogress.bepis");
                     }
                 }
             });
@@ -551,6 +659,7 @@ impl SaveEditorApp {
                 ui.label("Wave:");
                 if ui.text_edit_singleline(wave).changed() {
                     validate_f32(wave);
+                    debug_log!("data", "Cybergrind wave -> {}", wave);
                 }
             });
 
@@ -558,6 +667,7 @@ impl SaveEditorApp {
                 ui.label("Kills:");
                 if ui.text_edit_singleline(kills).changed() {
                     validate_u32(kills);
+                    debug_log!("data", "Cybergrind kills -> {}", kills);
                 }
             });
 
@@ -565,6 +675,7 @@ impl SaveEditorApp {
                 ui.label("Style:");
                 if ui.text_edit_singleline(style).changed() {
                     validate_u32(style);
+                    debug_log!("data", "Cybergrind style -> {}", style);
                 }
             });
 
@@ -572,6 +683,7 @@ impl SaveEditorApp {
                 ui.label("Time (s):");
                 if ui.text_edit_singleline(time).changed() {
                     validate_f32(time);
+                    debug_log!("data", "Cybergrind time -> {}", time);
                 }
             });
 
@@ -581,6 +693,7 @@ impl SaveEditorApp {
                     .clicked()
                 {
                     classes.cybergrind.file_exists = true;
+                    debug_log!("file", "Created: endlessprogress.bepis");
                 }
 
                 if ui
@@ -588,6 +701,7 @@ impl SaveEditorApp {
                     .clicked()
                 {
                     classes.cybergrind.file_exists = false;
+                    debug_log!("file", "Deleted: endlessprogress.bepis");
                 }
             });
 

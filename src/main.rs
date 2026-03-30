@@ -1,16 +1,17 @@
-#![windows_subsystem = "windows"]
-
-use std::io::Cursor;
-
 mod app;
 mod class;
+mod debug;
 mod enums;
 
 const WINDOW_NAME: &str = "ULTRAKILL Save Editor";
 const ICON_FILE: &[u8] = include_bytes!("../Icon.ico");
 
 fn main() -> eframe::Result<()> {
-    let icon_dir = ico::IconDir::read(Cursor::new(ICON_FILE)).unwrap();
+    if std::env::args().any(|a| a == "--debug") {
+        debug::init();
+    }
+
+    let icon_dir = ico::IconDir::read(std::io::Cursor::new(ICON_FILE)).unwrap();
     let mut largest_icon_size = 0;
     let mut largest_icon = &icon_dir.entries()[0];
 
