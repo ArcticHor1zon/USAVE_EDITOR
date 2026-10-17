@@ -1,0 +1,130 @@
+# =============================================================================
+# ULTRAKILL level definitions
+# =============================================================================
+#
+# Edit this file when ULTRAKILL adds new levels, layers, or acts.
+#
+# To add a new level:
+#   1. Find the layer it belongs to (e.g. add to "LAYER 9: TREACHERY")
+#   2. Add a new entry under that layer's `levels:` list:
+#
+#        - id: 34                    # the level number used in the filename
+#                                    # (lvl34progress.bepis)
+#          name: "9-1: COOL NEW LEVEL"
+#          secrets: 5                # how many secret skulls this level has
+#
+#   3. Save the file. Restart the editor. Done.
+#
+# Notes:
+#   - `id` must be unique across all levels (it's used in the filename).
+#   - `secrets` is the number of collectible secret skulls; boss/prime levels
+#     typically have 0.
+#   - Prime sanctums and Encore levels are in separate sections below because
+#     they use different mechanics (prime state, encore flags).
+# =============================================================================
+
+acts:
+  - name: "PRELUDE"
+    layers:
+      - name: "OVERTURE: THE MOUTH OF HELL"
+        levels:
+          - { id: 1,  name: "0-1: INTO THE FIRE",         secrets: 5 }
+          - { id: 2,  name: "0-2: THE MEATGRINDER",       secrets: 5 }
+          - { id: 3,  name: "0-3: DOUBLE DOWN",           secrets: 5 }
+          - { id: 4,  name: "0-4: A ONE-MACHINE ARMY",    secrets: 5 }
+          - { id: 5,  name: "0-5: CERBERUS",              secrets: 0 }
+        secret_level: "0-S: SOMETHING WICKED"
+
+  - name: "ACT I: INFINITE HYPERDEATH"
+    layers:
+      - name: "LAYER 1: LIMBO"
+        levels:
+          - { id: 6,  name: "1-1: HEART OF THE SUNRISE",  secrets: 5 }
+          - { id: 7,  name: "1-2: THE BURNING WORLD",     secrets: 5 }
+          - { id: 8,  name: "1-3: HALLS OF SACRED REMAINS", secrets: 5 }
+          - { id: 9,  name: "1-4: CLAIR DE LUNE",         secrets: 0 }
+        secret_level: "1-S: THE WITLESS"
+
+      - name: "LAYER 2: LUST"
+        levels:
+          - { id: 10, name: "2-1: BRIDGEBURNER",           secrets: 5 }
+          - { id: 11, name: "2-2: DEATH AT 20,000 VOLTS",  secrets: 5 }
+          - { id: 12, name: "2-3: SHEER HEART ATTACK",     secrets: 5 }
+          - { id: 13, name: "2-4: COURT OF THE CORPSE KING", secrets: 0 }
+        secret_level: "2-S: ALL-IMPERFECT LOVE SONG"
+
+      - name: "LAYER 3: GLUTTONY"
+        levels:
+          - { id: 14, name: "3-1: BELLY OF THE BEAST",     secrets: 5 }
+          - { id: 15, name: "3-2: IN THE FLESH",           secrets: 0 }
+        secret_level: "P-1: SOUL SURVIVOR"
+
+  - name: "ACT II: IMPERFECT HATRED"
+    layers:
+      - name: "LAYER 4: GREED"
+        levels:
+          - { id: 16, name: "4-1: SLAVES TO POWER",        secrets: 5 }
+          - { id: 17, name: "4-2: GOD DAMN THE SUN",       secrets: 5 }
+          - { id: 18, name: "4-3: A SHOT IN THE DARK",     secrets: 5 }
+          - { id: 19, name: "4-4: CLAIR DE SOLEIL",        secrets: 0 }
+        secret_level: "4-S: CLASH OF THE BRANDICOOT"
+
+      - name: "LAYER 5: WRATH"
+        levels:
+          - { id: 20, name: "5-1: IN THE WAKE OF POSEIDON",  secrets: 5 }
+          - { id: 21, name: "5-2: WAVES OF THE STARLESS SEA", secrets: 5 }
+          - { id: 22, name: "5-3: SHIP OF FOOLS",            secrets: 5 }
+          - { id: 23, name: "5-4: LEVIATHAN",                secrets: 0 }
+        secret_level: "5-S: I ONLY SAY MORNING"
+
+      - name: "LAYER 6: HERESY"
+        levels:
+          - { id: 24, name: "6-1: CRY FOR THE WEEPER",     secrets: 5 }
+          - { id: 25, name: "6-2: AESTHETICS OF HATE",     secrets: 0 }
+        secret_level: "P-2: WAIT OF THE WORLD"
+
+  - name: "ACT III: GODFIST SUICIDE"
+    layers:
+      - name: "LAYER 7: VIOLENCE"
+        levels:
+          - { id: 26, name: "7-1: GARDEN OF FORKING PATHS",  secrets: 5 }
+          - { id: 27, name: "7-2: LIGHT UP THE NIGHT",       secrets: 5 }
+          - { id: 28, name: "7-3: NO SOUND, NO MEMORY",      secrets: 5 }
+          - { id: 29, name: "7-4: ...LIKE ANTENNAS TO HEAVEN", secrets: 5 }
+        secret_level: "7-S: HELL BATH NO FURY"
+
+      - name: "LAYER 8: FRAUD"
+        levels:
+          - { id: 30, name: "8-1: HURTBREAK WONDERLAND",    secrets: 5 }
+          - { id: 31, name: "8-2: THROUGH THE MIRROR",      secrets: 5 }
+          - { id: 32, name: "8-3: DISINTEGRATION LOOP",     secrets: 5 }
+          - { id: 33, name: "8-4: FINAL FLIGHT",            secrets: 5 }
+        secret_level: "8-S: ???"
+
+      - name: "LAYER 9: TREACHERY"
+        levels: []
+        secret_level: "P-3: ???"   # placeholder; updated when released
+
+  - name: "ENCORE"
+    layers:
+      - name: "ENCORE"
+        levels:
+          - { id: 100, name: "0-E: THIS HEAT, AN EVIL HEAT",   secrets: 0, encore: true }
+          - { id: 101, name: "1-E: ...THEN FELL THE ASHES",     secrets: 0, encore: true }
+        secret_level: "ENCORE PLACEHOLDER"
+
+# =============================================================================
+# Prime Sanctums — special levels tracked by DifficultyData.prime_levels.
+# `prime_index` is the position in the prime_levels array (0-based).
+# =============================================================================
+prime_sanctums:
+  - { id: 666, name: "P-1: SOUL SURVIVOR",    prime_index: 0 }
+  - { id: 667, name: "P-2: WAIT OF THE WORLD", prime_index: 1 }
+
+# =============================================================================
+# Encore levels — also listed above under the ENCORE act, but tracked here
+# for the encore_index lookup.
+# =============================================================================
+encore_levels:
+  - { id: 100, name: "0-E: THIS HEAT, AN EVIL HEAT",   encore_index: 0 }
+  - { id: 101, name: "1-E: ...THEN FELL THE ASHES",     encore_index: 1 }

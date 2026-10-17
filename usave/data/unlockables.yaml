@@ -1,0 +1,23 @@
+# =============================================================================
+# ULTRAKILL unlockable definitions
+# =============================================================================
+#
+# These are the entries in the `unlockablesFound` bool[] array in
+# generalprogress.bepis. Each entry is a single boolean: whether the
+# corresponding unlockable has been collected.
+#
+# To add a new unlockable:
+#   1. Find the next free `id`.
+#   2. Add an entry:
+#
+#        - id: 2
+#          name: "Cool New Unlockable"
+#
+#   3. Save and restart the editor.
+#
+# IMPORTANT: do NOT change existing `id` values — they are positional.
+# =============================================================================
+
+unlockables:
+  - { id: 0, name: "Florp" }
+  - { id: 1, name: "KITR" }

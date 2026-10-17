@@ -1,0 +1,65 @@
+# =============================================================================
+# ULTRAKILL enemy definitions
+# =============================================================================
+#
+# The `id` is the index into the `newEnemiesFound` int[] array in
+# generalprogress.bepis. The `name` is shown in the GUI.
+#
+# To add a new enemy when ULTRAKILL updates:
+#   1. Find the next free `id` (count up from the last entry).
+#   2. Add a new entry:
+#
+#        - id: 44
+#          name: "Cool New Enemy"
+#
+#   3. Save and restart the editor.
+#
+# IMPORTANT: do NOT change existing `id` values — they are positional and
+# changing them will misalign the save file's enemy discovery array.
+# =============================================================================
+
+enemies:
+  - { id: 0,  name: "Cerberus" }
+  - { id: 1,  name: "Drone" }
+  - { id: 2,  name: "Hideous Mass" }
+  - { id: 3,  name: "Filth" }
+  - { id: 4,  name: "Malicious Face" }
+  - { id: 5,  name: "Mindflayer" }
+  - { id: 6,  name: "Streetcleaner" }
+  - { id: 7,  name: "Swordsmachine" }
+  - { id: 8,  name: "V2" }
+  - { id: 9,  name: "Virtue" }
+  - { id: 10, name: "Wicked" }
+  - { id: 11, name: "Minos" }
+  - { id: 12, name: "Stalker" }
+  - { id: 13, name: "Stray" }
+  - { id: 14, name: "Schism" }
+  - { id: 15, name: "Soldier" }
+  - { id: 16, name: "Gabriel, Judge of Hell" }
+  - { id: 17, name: "Flesh Prison" }
+  - { id: 18, name: "Minos Prime" }
+  - { id: 19, name: "Sisyphean Insurrectionist" }
+  - { id: 20, name: "Sentry" }
+  - { id: 21, name: "Idol" }
+  - { id: 22, name: "V2 (2nd)" }
+  - { id: 23, name: "Cancerous Rodent" }
+  - { id: 24, name: "Very Cancerous Rodent" }
+  - { id: 25, name: "Mysterious Druid Knight (& Owl)" }
+  - { id: 26, name: "Ferryman" }
+  - { id: 27, name: "Leviathan" }
+  - { id: 28, name: "Gabriel, Apostate of Hate" }
+  - { id: 29, name: "Sisyphus Prime" }
+  - { id: 30, name: "Flesh Panopticon" }
+  - { id: 31, name: "Mannequin" }
+  - { id: 32, name: "Gutterman" }
+  - { id: 33, name: "Guttertank" }
+  - { id: 34, name: "1000-THR Defence System" }
+  - { id: 35, name: "Earthmover" }
+  - { id: 36, name: "Big Johninator" }
+  - { id: 37, name: "Minotaur" }
+  - { id: 38, name: "Puppet" }
+  - { id: 39, name: "Providence" }
+  - { id: 40, name: "Deathcatcher" }
+  - { id: 41, name: "Mirror Reaper" }
+  - { id: 42, name: "Power" }
+  - { id: 43, name: "Geryon" }

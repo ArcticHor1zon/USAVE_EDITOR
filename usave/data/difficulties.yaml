@@ -1,0 +1,25 @@
+# =============================================================================
+# ULTRAKILL difficulty definitions
+# =============================================================================
+#
+# The 5 difficulties ULTRAKILL ships with. The `id` is used in the
+# difficulty<N>progress.bepis filename and as the array index into the
+# Cybergrind per-difficulty stat arrays.
+#
+# To add a new difficulty (rare — ULTRAKILL would have to add one):
+#   1. Add an entry with the next free `id`:
+#
+#        - id: 5
+#          name: "ULTRAKILL MUST DIE"
+#
+#   2. Save and restart the editor.
+#
+# IMPORTANT: do NOT change existing `id` values.
+# =============================================================================
+
+difficulties:
+  - { id: 0, name: "Harmless" }
+  - { id: 1, name: "Lenient" }
+  - { id: 2, name: "Standard" }
+  - { id: 3, name: "Violent" }
+  - { id: 4, name: "Brutal" }
