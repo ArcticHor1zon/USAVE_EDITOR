@@ -21,6 +21,13 @@ Layout:
       Cerberus:           [combo: Undiscovered/Partial/Full]
       ...
   [Create file] [Delete file]
+
+When the user edits any field:
+  - If generalprogress.bepis already exists (created by the game or by
+    clicking "Create file"), the change is written to disk immediately
+    — no need to click "Delete file" then "Create file" again.
+  - If the file does NOT exist, the change is held in memory only.
+    Click "Create file" to persist it.
 """
 
 from __future__ import annotations
@@ -46,6 +53,7 @@ from ..save_classes.difficulty_data import (
     LOCKABLE_COMPLETED,
     LOCKABLE_LOCKED,
     LOCKABLE_UNLOCKED,
+    LOCKABLE_LABELS,
 )
 
 if TYPE_CHECKING:
@@ -288,6 +296,29 @@ class GeneralPanel(QWidget):
                     fn(child, name)
 
     # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _persist_or_hold(self, status_msg: str) -> None:
+        """Common logic after a general-field edit.
+
+        If generalprogress.bepis already exists, mark dirty+decoded and
+        save in place. Otherwise, hold the change in memory only.
+        """
+        classes = self._main.current_classes()
+        if classes is None:
+            return
+        if classes.general.file_exists:
+            classes.general.dirty = True
+            classes.general.decoded = True
+            self._main.mark_dirty_and_save()
+            self._main.set_status(status_msg)
+        else:
+            self._main.set_status(
+                f"{status_msg} (in memory — click Create file to save)"
+            )
+
+    # ------------------------------------------------------------------
     # Event handlers
     # ------------------------------------------------------------------
 
@@ -304,9 +335,7 @@ class GeneralPanel(QWidget):
             self.money_edit.setText(cleaned)
             self.money_edit.blockSignals(False)
         classes.general.money = cleaned or "0"
-        classes.general.dirty = True
-        classes.general.decoded = True
-        self._main.mark_dirty_and_save()
+        self._persist_or_hold(f"Money set to {cleaned or '0'}")
 
     def _on_intro_toggled(self, checked: bool) -> None:
         if self._building:
@@ -315,9 +344,7 @@ class GeneralPanel(QWidget):
         if classes is None:
             return
         classes.general.intro_seen = checked
-        classes.general.dirty = True
-        classes.general.decoded = True
-        self._main.mark_dirty_and_save()
+        self._persist_or_hold(f"Intro seen: {'on' if checked else 'off'}")
 
     def _on_tutorial_toggled(self, checked: bool) -> None:
         if self._building:
@@ -326,9 +353,7 @@ class GeneralPanel(QWidget):
         if classes is None:
             return
         classes.general.tutorial_beat = checked
-        classes.general.dirty = True
-        classes.general.decoded = True
-        self._main.mark_dirty_and_save()
+        self._persist_or_hold(f"Tutorial beat: {'on' if checked else 'off'}")
 
     def _on_clash_toggled(self, checked: bool) -> None:
         if self._building:
@@ -337,9 +362,7 @@ class GeneralPanel(QWidget):
         if classes is None:
             return
         classes.general.clash_mode_unlocked = checked
-        classes.general.dirty = True
-        classes.general.decoded = True
-        self._main.mark_dirty_and_save()
+        self._persist_or_hold(f"Clash mode: {'on' if checked else 'off'}")
 
     def _on_unlockable_toggled(self, name: str, checked: bool) -> None:
         if self._building:
@@ -348,9 +371,7 @@ class GeneralPanel(QWidget):
         if classes is None:
             return
         classes.general.unlockables_found[name] = checked
-        classes.general.dirty = True
-        classes.general.decoded = True
-        self._main.mark_dirty_and_save()
+        self._persist_or_hold(f"{name}: {'found' if checked else 'not found'}")
 
     def _on_customizable_toggled(self, name: str, checked: bool) -> None:
         if self._building:
@@ -359,9 +380,7 @@ class GeneralPanel(QWidget):
         if classes is None:
             return
         classes.general.weapons_customizable[name] = checked
-        classes.general.dirty = True
-        classes.general.decoded = True
-        self._main.mark_dirty_and_save()
+        self._persist_or_hold(f"{name} customizable: {'on' if checked else 'off'}")
 
     def _on_variant_toggled(self, name: str, checked: bool) -> None:
         if self._building:
@@ -370,9 +389,7 @@ class GeneralPanel(QWidget):
         if classes is None:
             return
         classes.general.unlocked_weapons[name] = checked
-        classes.general.dirty = True
-        classes.general.decoded = True
-        self._main.mark_dirty_and_save()
+        self._persist_or_hold(f"{name}: {'unlocked' if checked else 'locked'}")
 
     def _on_enemy_state_changed(self, name: str) -> None:
         if self._building:
@@ -388,10 +405,10 @@ class GeneralPanel(QWidget):
                 continue
             for child in w.findChildren(QComboBox):
                 if child.property("enemy_name") == name:
-                    classes.general.enemies_discovered[name] = child.currentData()
-                    classes.general.dirty = True
-                    classes.general.decoded = True
-                    self._main.mark_dirty_and_save()
+                    new_state = child.currentData()
+                    classes.general.enemies_discovered[name] = new_state
+                    state_label = LOCKABLE_LABELS.get(new_state, str(new_state))
+                    self._persist_or_hold(f"{name}: {state_label}")
                     return
 
     def _on_create_file(self) -> None:
@@ -403,6 +420,7 @@ class GeneralPanel(QWidget):
         classes.general.decoded = True
         self._main.mark_dirty_and_save()
         self.refresh()
+        self._main.set_status("Created generalprogress.bepis")
 
     def _on_delete_file(self) -> None:
         classes = self._main.current_classes()
@@ -415,3 +433,4 @@ class GeneralPanel(QWidget):
         if save_dir is not None:
             GeneralData.delete_from(save_dir)
         self.refresh()
+        self._main.set_status("Deleted generalprogress.bepis")

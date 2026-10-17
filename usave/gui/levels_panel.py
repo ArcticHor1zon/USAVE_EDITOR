@@ -6,8 +6,24 @@ Each level row has inline editors:
   - Secret checkboxes (one per secret skull)
   - Create file / Delete file buttons
 
-Secret mission state combos are shown for non-prime, non-encore secret
-levels (attached to their layer row).
+Secret mission rows (the "0-S: SOMETHING WICKED" etc. entries under each
+layer) have ONLY a state combo — no Create/Delete buttons. This is
+because secret-mission state lives in `generalprogress.bepis` (the
+`secretMissions` int array), which is a single shared file that also
+holds money, weapons, enemies, and unlockables. Putting per-row
+Create/Delete buttons on secret missions would be misleading: clicking
+"Delete" on one mission would delete the entire general file and wipe
+ALL missions plus money/weapons/enemies, panicking the user.
+
+To create or delete `generalprogress.bepis`, use the Create/Delete
+buttons on the General panel — they correctly operate on the whole file.
+
+When the user edits a rank, secret, or state:
+  - If the save file already exists (created by the game or by clicking
+    "Create file"), the change is written to disk immediately — no need
+    to click "Delete file" then "Create file" again.
+  - If the save file does NOT exist, the change is held in memory only.
+    Click "Create file" to persist it.
 
 Ports `update_levels()`, `update_single_level()`, and
 `update_secret_level()` from `app.rs` in the Rust project.
@@ -17,7 +33,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -42,6 +58,7 @@ from ..save_classes.difficulty_data import (
     LOCKABLE_COMPLETED,
     LOCKABLE_LOCKED,
     LOCKABLE_UNLOCKED,
+    LOCKABLE_LABELS,
 )
 
 if TYPE_CHECKING:
@@ -237,14 +254,36 @@ class LevelsPanel(QWidget):
         self.tree.setItemWidget(item, _COL_FILE_OPS, file_widget)
 
     def _add_secret_level_row(self, parent: QTreeWidgetItem, sl: SecretLevelDef) -> None:
+        """Add a secret-mission row with ONLY a state combo.
+
+        Secret-mission state lives in generalprogress.bepis (the
+        `secretMissions` int array), which is a single shared file that
+        also holds money, weapons, enemies, and unlockables. We do NOT
+        put Create/Delete buttons here because:
+
+          - "Delete" on one mission would have to delete the entire
+            general file, wiping ALL missions plus money/weapons/enemies
+            — that would make every other secret mission's combo reset
+            to "Locked" and panic the user.
+          - "Create" on one mission would create the general file, but
+            that's not really per-mission semantics either.
+
+        To create or delete generalprogress.bepis, use the Create/Delete
+        buttons on the General panel. Here we just expose the per-mission
+        state combo, which is the actual per-mission control.
+        """
         classes = self._main.current_classes()
         if classes is None:
             return
         current_state = classes.general.secret_missions.get(sl.name, LOCKABLE_LOCKED)
 
         item = QTreeWidgetItem([sl.name, "", "", "", ""])
+        # Tag this item so we can find it later by name AND so we can
+        # distinguish it from regular level rows.
+        item.setData(_COL_NAME, Qt.UserRole, ("secret_level", sl.name))
         parent.addChild(item)
 
+        # State combo — the only per-mission control.
         state_combo = QComboBox()
         state_combo.addItem("Locked", LOCKABLE_LOCKED)
         state_combo.addItem("Unlocked", LOCKABLE_UNLOCKED)
@@ -254,6 +293,17 @@ class LevelsPanel(QWidget):
             if current_state in (LOCKABLE_LOCKED, LOCKABLE_UNLOCKED, LOCKABLE_COMPLETED)
             else 0
         )
+        # If the general file doesn't exist, show a tooltip explaining
+        # why the change won't be written yet.
+        if not classes.general.file_exists:
+            state_combo.setToolTip(
+                "generalprogress.bepis does not exist — changes will be held in "
+                "memory until you click Create file on the General panel."
+            )
+        else:
+            state_combo.setToolTip(
+                "Secret-mission state (stored in generalprogress.bepis)."
+            )
         state_combo.currentIndexChanged.connect(
             lambda _i, name=sl.name: self._on_secret_level_state_changed(name)
         )
@@ -261,6 +311,15 @@ class LevelsPanel(QWidget):
 
     # ------------------------------------------------------------------
     # Event handlers
+    #
+    # Each handler follows this pattern:
+    #   1. Read the new value from the widget
+    #   2. Update the in-memory model
+    #   3. If the save file already exists (file_exists=True), set dirty
+    #      and decoded so mark_dirty_and_save() will write it in place.
+    #      If the file does NOT exist, the change stays in memory only —
+    #      the user must click "Create file" to persist it.
+    #   4. Show a status message describing what happened.
     # ------------------------------------------------------------------
 
     def _on_rank_changed(self, level_id: int) -> None:
@@ -282,9 +341,22 @@ class LevelsPanel(QWidget):
         diff_idx = self._main.current_difficulty()
         if diff_idx < len(data.ranks):
             data.ranks[diff_idx] = new_rank
-        data.dirty = True
-        data.decoded = True
-        self._main.mark_dirty_and_save()
+
+        level = GAME_DATA.get_level(level_id)
+        level_name = level.name if level else f"level {level_id}"
+        rank_label = RANK_LABELS.get(new_rank, str(new_rank))
+
+        if data.file_exists:
+            # File already exists — modify it in place.
+            data.dirty = True
+            data.decoded = True
+            self._main.mark_dirty_and_save()
+            self._main.set_status(f"Updated {level_name}: rank → {rank_label}")
+        else:
+            # File doesn't exist yet — change held in memory only.
+            self._main.set_status(
+                f"{level_name}: rank → {rank_label} (in memory — click Create file to save)"
+            )
 
     def _on_prime_state_changed(self, level_id: int) -> None:
         if self._building:
@@ -307,10 +379,20 @@ class LevelsPanel(QWidget):
         new_state = state_combo.currentData()
         if level.prime_index < len(diff_data.prime_levels):
             diff_data.prime_levels[level.prime_index] = new_state
-        diff_data.file_exists = True
-        diff_data.dirty = True
-        diff_data.decoded = True
-        self._main.mark_dirty_and_save()
+
+        state_label = LOCKABLE_LABELS.get(new_state, str(new_state))
+
+        if diff_data.file_exists:
+            # Difficulty file already exists — modify it in place.
+            diff_data.dirty = True
+            diff_data.decoded = True
+            self._main.mark_dirty_and_save()
+            self._main.set_status(f"Updated {level.name}: state → {state_label}")
+        else:
+            # File doesn't exist yet — change held in memory only.
+            self._main.set_status(
+                f"{level.name}: state → {state_label} (in memory — click Create file to save)"
+            )
 
     def _on_secret_toggled(self, level_id: int, secret_idx: int) -> None:
         if self._building:
@@ -331,31 +413,66 @@ class LevelsPanel(QWidget):
         if not isinstance(cb, QCheckBox):
             return
         data.secrets_found[secret_idx] = cb.isChecked()
-        data.dirty = True
-        data.decoded = True
-        self._main.mark_dirty_and_save()
+
+        level = GAME_DATA.get_level(level_id)
+        level_name = level.name if level else f"level {level_id}"
+        state_str = "found" if cb.isChecked() else "unfound"
+
+        if data.file_exists:
+            # File already exists — modify it in place.
+            data.dirty = True
+            data.decoded = True
+            self._main.mark_dirty_and_save()
+            self._main.set_status(f"Updated {level_name}: secret {secret_idx + 1} {state_str}")
+        else:
+            # File doesn't exist yet — change held in memory only.
+            self._main.set_status(
+                f"{level_name}: secret {secret_idx + 1} {state_str} (in memory — click Create file to save)"
+            )
 
     def _on_secret_level_state_changed(self, name: str) -> None:
+        """Handler for the secret-mission state combo.
+
+        Secret-mission state lives in generalprogress.bepis, so this
+        checks classes.general.file_exists — NOT a per-level file.
+
+        If the general file exists, the change is written in place
+        immediately. If it doesn't exist, the change is held in memory
+        and the user is told to click Create file on the General panel.
+        We do NOT create or delete the general file from here — that
+        would affect all other secret missions (and money, weapons,
+        enemies, unlockables) which is confusing and panic-inducing.
+        """
         if self._building:
             return
         classes = self._main.current_classes()
         if classes is None:
             return
         # Find the combo by walking the tree
-        for i in range(self.tree.topLevelItemCount()):
-            top = self.tree.topLevelItem(i)
-            for j in range(top.childCount()):
-                layer_item = top.child(j)
-                for k in range(layer_item.childCount()):
-                    item = layer_item.child(k)
-                    if item.text(_COL_NAME) == name:
-                        state_combo = self.tree.itemWidget(item, _COL_STATE)
-                        if isinstance(state_combo, QComboBox):
-                            classes.general.secret_missions[name] = state_combo.currentData()
-                            classes.general.dirty = True
-                            classes.general.decoded = True
-                            self._main.mark_dirty_and_save()
-                        return
+        item = self._find_secret_level_item(name)
+        if item is None:
+            return
+        state_combo = self.tree.itemWidget(item, _COL_STATE)
+        if not isinstance(state_combo, QComboBox):
+            return
+        new_state = state_combo.currentData()
+        classes.general.secret_missions[name] = new_state
+        state_label = LOCKABLE_LABELS.get(new_state, str(new_state))
+
+        if classes.general.file_exists:
+            # General file already exists — modify it in place.
+            classes.general.dirty = True
+            classes.general.decoded = True
+            self._main.mark_dirty_and_save()
+            self._main.set_status(f"Updated {name}: state → {state_label}")
+        else:
+            # File doesn't exist yet — change held in memory only.
+            # Tell the user WHERE to create the file (General panel),
+            # not just "click Create file" which would be ambiguous
+            # since there's no Create button on this row.
+            self._main.set_status(
+                f"{name}: state → {state_label} (in memory — click Create file on the General panel to save)"
+            )
 
     def _on_create_file(self, level_id: int) -> None:
         classes = self._main.current_classes()
@@ -369,6 +486,7 @@ class LevelsPanel(QWidget):
         data.decoded = True
         self._main.save_single_level(level_id)
         self.refresh()
+        self._main.set_status(f"Created lvl{level_id}progress.bepis")
 
     def _on_delete_file(self, level_id: int) -> None:
         classes = self._main.current_classes()
@@ -380,6 +498,7 @@ class LevelsPanel(QWidget):
         data.file_exists = False
         self._main.delete_single_level(level_id)
         self.refresh()
+        self._main.set_status(f"Deleted lvl{level_id}progress.bepis")
 
     # ------------------------------------------------------------------
     # Helpers
@@ -403,11 +522,36 @@ class LevelsPanel(QWidget):
     ) -> Optional[QTreeWidgetItem]:
         # Check this item itself (handles prime sanctums which are
         # direct children of the PRIME SANCTUMS top-level item).
-        if item.data(_COL_NAME, Qt.UserRole) == level_id:
+        data = item.data(_COL_NAME, Qt.UserRole)
+        # Regular level rows store the integer level id; secret-level
+        # rows store a ("secret_level", name) tuple — skip those.
+        if isinstance(data, int) and data == level_id:
             return item
         # Recurse into children
         for i in range(item.childCount()):
             found = self._find_level_item_recursive(item.child(i), level_id)
+            if found is not None:
+                return found
+        return None
+
+    def _find_secret_level_item(self, name: str) -> Optional[QTreeWidgetItem]:
+        """Find the tree item for a given secret-mission name."""
+        for i in range(self.tree.topLevelItemCount()):
+            top = self.tree.topLevelItem(i)
+            found = self._find_secret_level_item_recursive(top, name)
+            if found is not None:
+                return found
+        return None
+
+    def _find_secret_level_item_recursive(
+        self, item: QTreeWidgetItem, name: str
+    ) -> Optional[QTreeWidgetItem]:
+        data = item.data(_COL_NAME, Qt.UserRole)
+        # Secret-level rows store ("secret_level", name) tuples.
+        if isinstance(data, tuple) and len(data) == 2 and data[0] == "secret_level" and data[1] == name:
+            return item
+        for i in range(item.childCount()):
+            found = self._find_secret_level_item_recursive(item.child(i), name)
             if found is not None:
                 return found
         return None

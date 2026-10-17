@@ -10,6 +10,13 @@ Layout:
   Style:   [text edit]
   Time (s): [text edit]
   [Create file] [Delete file]
+
+When the user edits any field:
+  - If endlessprogress.bepis already exists (created by the game or by
+    clicking "Create file"), the change is written to disk immediately
+    — no need to click "Delete file" then "Create file" again.
+  - If the file does NOT exist, the change is held in memory only.
+    Click "Create file" to persist it.
 """
 
 from __future__ import annotations
@@ -156,9 +163,21 @@ class CybergrindPanel(QWidget):
         cg.kills[diff_idx] = kills
         cg.style[diff_idx] = style
         cg.times[diff_idx] = time
-        cg.dirty = True
-        cg.decoded = True
-        self._main.mark_dirty_and_save()
+
+        status_msg = (
+            f"Cybergrind updated: wave={wave}, kills={kills}, style={style}, time={time}s"
+        )
+        if cg.file_exists:
+            # File already exists — modify it in place.
+            cg.dirty = True
+            cg.decoded = True
+            self._main.mark_dirty_and_save()
+            self._main.set_status(status_msg)
+        else:
+            # File doesn't exist yet — change held in memory only.
+            self._main.set_status(
+                f"{status_msg} (in memory — click Create file to save)"
+            )
 
     def _on_create_file(self) -> None:
         classes = self._main.current_classes()
@@ -169,6 +188,7 @@ class CybergrindPanel(QWidget):
         classes.cybergrind.decoded = True
         self._main.mark_dirty_and_save()
         self.refresh()
+        self._main.set_status("Created endlessprogress.bepis")
 
     def _on_delete_file(self) -> None:
         classes = self._main.current_classes()
@@ -179,6 +199,7 @@ class CybergrindPanel(QWidget):
         if save_dir is not None:
             CybergrindData.delete_from(save_dir)
         self.refresh()
+        self._main.set_status("Deleted endlessprogress.bepis")
 
     # ------------------------------------------------------------------
     # Validators (port `validate_f32` / `validate_u32` from `app.rs`)

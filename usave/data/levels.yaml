@@ -11,13 +11,15 @@
 #        - id: 34                    # the level number used in the filename
 #                                    # (lvl34progress.bepis)
 #          name: "9-1: COOL NEW LEVEL"
-#          secrets: 5                # how many secret skulls this level has
+#          secrets: 5 # how many secret skulls this level has
+#          encore: true # if the level is an encore
+#          prime_index: 0 # idrk, p-1 has index 0
 #
 #   3. Save the file. Restart the editor. Done.
 #
 # Notes:
-#   - `id` must be unique across all levels (it's used in the filename).
-#   - `secrets` is the number of collectible secret skulls; boss/prime levels
+#   - id must be unique across all levels (it's used in the filename).
+#   - secrets is the number of collectible secret skulls; boss/prime levels
 #     typically have 0.
 #   - Prime sanctums and Encore levels are in separate sections below because
 #     they use different mechanics (prime state, encore flags).
@@ -120,6 +122,7 @@ acts:
 prime_sanctums:
   - { id: 666, name: "P-1: SOUL SURVIVOR",    prime_index: 0 }
   - { id: 667, name: "P-2: WAIT OF THE WORLD", prime_index: 1 }
+  - { id: 668, name: "P-3: PLACEHOLDER", prime_index: 2 }
 
 # =============================================================================
 # Encore levels — also listed above under the ENCORE act, but tracked here
