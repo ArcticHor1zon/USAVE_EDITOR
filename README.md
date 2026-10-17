@@ -5,8 +5,7 @@
 ![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)
 ![State](https://img.shields.io/badge/state-alpha-%23ff0000?style=for-the-badge&label=state&labelColor=%231a1a1a)
 
-A Python rewrite of [ArcticHor1zon's USAVE_EDITOR](https://github.com/ArcticHor1zon/USAVE_EDITOR),
-a save editor for the game ULTRAKILL. The original was written in Rust with
+A Python rewrite of a save editor for the game ULTRAKILL. The original was written in Rust with
 a custom .NET Binary Format (NRBF) parser; this rewrite is pure Python with
 a PySide6 (Qt) GUI and **YAML-driven game data** so new levels/enemies/weapons
 can be added without touching code when ULTRAKILL updates.
