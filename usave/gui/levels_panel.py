@@ -3,6 +3,8 @@
 Each level row has inline editors:
   - Rank combo (per difficulty)
   - Prime state combo (for prime sanctums only)
+  - Challenge checkbox (for all non-encore levels — marks the level's
+    challenge as completed)
   - Secret checkboxes (one per secret skull)
   - Create file / Delete file buttons
 
@@ -193,7 +195,19 @@ class LevelsPanel(QWidget):
         )
         self.tree.setItemWidget(item, _COL_RANK, rank_combo)
 
-        # Prime state combo (for prime sanctums only)
+        # State column:
+        #   - Prime sanctums: a Lockable combo (Locked/Unlocked/Completed)
+        #     PLUS a "Challenge done" checkbox underneath.
+        #   - Regular levels: just a "Challenge done" checkbox.
+        #   - Encore levels: no challenge (skipped — they don't appear in
+        #     this row builder's caller since regular_levels filters them
+        #     out, but they could appear via _add_level_row for prime
+        #     sanctums; prime sanctums are not encore, so this is fine).
+        state_widget = QWidget()
+        state_layout = QVBoxLayout(state_widget)
+        state_layout.setContentsMargins(2, 0, 2, 0)
+        state_layout.setSpacing(2)
+
         if level.is_prime:
             diff_data = classes.difficulty.get(self._main.current_difficulty())
             if diff_data is not None and level.prime_index is not None:
@@ -215,7 +229,23 @@ class LevelsPanel(QWidget):
             state_combo.currentIndexChanged.connect(
                 lambda _i, lid=level.id: self._on_prime_state_changed(lid)
             )
-            self.tree.setItemWidget(item, _COL_STATE, state_combo)
+            state_layout.addWidget(state_combo)
+
+        # Challenge checkbox — shown for all non-encore levels.
+        # Level.has_challenge in the original Rust returns !is_encore,
+        # which is True for prime sanctums too.
+        if level.has_challenge:
+            challenge_cb = QCheckBox("Challenge done")
+            challenge_cb.setChecked(data.challenge)
+            challenge_cb.setToolTip(
+                "Mark this level's challenge as completed."
+            )
+            challenge_cb.toggled.connect(
+                lambda checked, lid=level.id: self._on_challenge_toggled(lid, checked)
+            )
+            state_layout.addWidget(challenge_cb)
+
+        self.tree.setItemWidget(item, _COL_STATE, state_widget)
 
         # Secret checkboxes
         if data.secrets_found:
@@ -373,10 +403,18 @@ class LevelsPanel(QWidget):
         item = self._find_level_item(level_id)
         if item is None:
             return
-        state_combo = self.tree.itemWidget(item, _COL_STATE)
-        if not isinstance(state_combo, QComboBox):
+        # The prime state combo is the FIRST widget inside the State
+        # column's vertical layout. Find it.
+        state_widget = self.tree.itemWidget(item, _COL_STATE)
+        if state_widget is None:
             return
-        new_state = state_combo.currentData()
+        state_layout = state_widget.layout()
+        if state_layout is None or state_layout.count() == 0:
+            return
+        first = state_layout.itemAt(0).widget()
+        if not isinstance(first, QComboBox):
+            return
+        new_state = first.currentData()
         if level.prime_index < len(diff_data.prime_levels):
             diff_data.prime_levels[level.prime_index] = new_state
 
@@ -392,6 +430,39 @@ class LevelsPanel(QWidget):
             # File doesn't exist yet — change held in memory only.
             self._main.set_status(
                 f"{level.name}: state → {state_label} (in memory — click Create file to save)"
+            )
+
+    def _on_challenge_toggled(self, level_id: int, checked: bool) -> None:
+        """Handler for the per-level "Challenge done" checkbox.
+
+        Challenge state lives in lvl{N}progress.bepis (the `challenge`
+        bool field), so this checks the per-level file's file_exists
+        flag.
+        """
+        if self._building:
+            return
+        classes = self._main.current_classes()
+        if classes is None:
+            return
+        data = classes.levels.get(level_id)
+        if data is None:
+            return
+        data.challenge = checked
+
+        level = GAME_DATA.get_level(level_id)
+        level_name = level.name if level else f"level {level_id}"
+        state_str = "done" if checked else "not done"
+
+        if data.file_exists:
+            # File already exists — modify it in place.
+            data.dirty = True
+            data.decoded = True
+            self._main.mark_dirty_and_save()
+            self._main.set_status(f"Updated {level_name}: challenge {state_str}")
+        else:
+            # File doesn't exist yet — change held in memory only.
+            self._main.set_status(
+                f"{level_name}: challenge {state_str} (in memory — click Create file to save)"
             )
 
     def _on_secret_toggled(self, level_id: int, secret_idx: int) -> None:

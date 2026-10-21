@@ -1,0 +1,41 @@
+# =============================================================================
+# SAMPLE unlockables.yaml — reference template with every option documented.
+# =============================================================================
+#
+# These are the entries in the `unlockablesFound` bool[] array in
+# generalprogress.bepis. Each entry is a single boolean: whether the
+# corresponding unlockable has been collected.
+#
+# FIELD REFERENCE
+# ---------------
+#
+# Per unlockable entry (under top-level `unlockables:` list):
+#
+#   id:    REQUIRED. Integer. Positional index into the
+#          `unlockablesFound` array. Starts at 0. Must be sequential
+#          and unique. Do NOT reorder existing entries or change
+#          their ids — that will misalign the save file's unlockable
+#          array.
+#
+#   name:  REQUIRED. String. Display name shown in the GUI under the
+#          Unlockables section. Convention: "Found" is appended
+#          automatically by the GUI, so use just the noun (e.g.
+#          "Florp", not "Florp Found").
+#
+# To add a new unlockable:
+#   1. Find the next free `id` (count up from the last entry).
+#   2. Add an entry:
+#        - { id: 2, name: "Cool New Unlockable" }
+#   3. Save and restart the editor.
+#
+# IMPORTANT: do NOT change existing `id` values — they are positional.
+# =============================================================================
+
+unlockables:
+  # First entry — long-form syntax showing all fields:
+  - id: 0
+    name: "Florp"
+  # Subsequent entries — compact short-form syntax:
+  - { id: 1, name: "KITR" }
+  # When a new unlockable is added by an ULTRAKILL update:
+  # - { id: 2, name: "Cool New Unlockable" }

@@ -1,0 +1,218 @@
+# =============================================================================
+# SAMPLE levels.yaml — reference template with every option documented.
+# =============================================================================
+#
+# This is a complete reference showing every field and flag the loader
+# understands. Copy this file to levels.yaml and edit it to match your
+# game version.
+#
+# FIELD REFERENCE
+# ---------------
+#
+# Per level entry (under a layer's `levels:` list):
+#
+#   id:            REQUIRED. Integer. The level number used in the save
+#                  file name (lvl<id>progress.bepis). Must be unique
+#                  across ALL levels (regular, prime, encore).
+#
+#   name:          REQUIRED. String. Display name shown in the GUI tree.
+#                  Convention: "ACT-LAYER: TITLE IN CAPS", e.g.
+#                  "0-1: INTO THE FIRE" or "P-1: SOUL SURVIVOR".
+#
+#   secrets:       OPTIONAL (default 0). Integer. Number of collectible
+#                  secret skulls in this level. Boss/prime levels
+#                  typically have 0. Controls how many checkboxes appear
+#                  in the Secrets column.
+#
+#   noChallenge:   OPTIONAL (default false). Boolean. If true, the
+#                  "Challenge done" checkbox is hidden for this level.
+#                  Use this for boss-only levels, cutscene levels, or
+#                  any level that doesn't have a challenge.
+#
+#   encore:        OPTIONAL (default false). Boolean. Marks the level as
+#                  an Encore level. Encore levels never show a challenge
+#                  checkbox (regardless of noChallenge). Only used in
+#                  the ENCORE act below.
+#
+# Per layer entry (under an act's `layers:` list):
+#
+#   name:          REQUIRED. String. Display name of the layer.
+#
+#   levels:        REQUIRED (can be empty list). List of level entries.
+#
+#   secret_level:  OPTIONAL. String. The name of the secret mission
+#                  attached to this layer. The string's prefix tells
+#                  the editor what kind of secret level it is:
+#                    - "P-N: ..."  → Prime Sanctum (also list under
+#                                   prime_sanctums below)
+#                    - "ENCORE"    → Encore placeholder (skipped in UI)
+#                    - anything else → regular secret mission (tracked
+#                                   in generalprogress.bepis)
+#
+# Per act entry (under top-level `acts:` list):
+#
+#   name:          REQUIRED. String. Display name of the act.
+#   layers:        REQUIRED. List of layer entries.
+#
+# Top-level sections:
+#
+#   acts:          List of acts. Each act has layers; each layer has
+#                  levels and an optional secret_level.
+#
+#   prime_sanctums: List of prime sanctum entries. Each has:
+#                     id, name, prime_index (0-based position in the
+#                     prime_levels array stored in
+#                     difficulty<N>progress.bepis), and optionally
+#                     noChallenge.
+#                   Prime sanctums are NOT listed under any act — they
+#                   get their own section in the GUI tree.
+#
+#   encore_levels: List of encore level entries. Each has:
+#                    id, name, encore_index (0-based), and optionally
+#                    noChallenge.
+#                  Encore levels ARE also listed under the ENCORE act
+#                  below — the loader merges encore_index into them
+#                  automatically. This separate list exists so the
+#                  editor can look up encore_index by id.
+#
+# IMPORTANT: do NOT change existing `id` values when adding new entries —
+# they are positional in some save file arrays and changing them will
+# misalign saved data.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Acts (regular levels, organized by act > layer > level)
+# -----------------------------------------------------------------------------
+acts:
+  - name: "PRELUDE"
+    layers:
+      - name: "OVERTURE: THE MOUTH OF HELL"
+        levels:
+          # Full long-form syntax (all optional fields shown):
+          - id: 1
+            name: "0-1: INTO THE FIRE"
+            secrets: 5
+            # noChallenge: false   # default; uncomment and set true to hide
+          # Compact short-form syntax (only required + commonly-used fields):
+          - { id: 2,  name: "0-2: THE MEATGRINDER",       secrets: 5 }
+          - { id: 3,  name: "0-3: DOUBLE DOWN",           secrets: 5 }
+          - { id: 4,  name: "0-4: A ONE-MACHINE ARMY",    secrets: 5 }
+          # Boss level — no secrets, no challenge:
+          - { id: 5,  name: "0-5: CERBERUS",              secrets: 0, noChallenge: true }
+        secret_level: "0-S: SOMETHING WICKED"
+
+  - name: "ACT I: INFINITE HYPERDEATH"
+    layers:
+      - name: "LAYER 1: LIMBO"
+        levels:
+          - { id: 6,  name: "1-1: HEART OF THE SUNRISE",    secrets: 5 }
+          - { id: 7,  name: "1-2: THE BURNING WORLD",       secrets: 5 }
+          - { id: 8,  name: "1-3: HALLS OF SACRED REMAINS", secrets: 5 }
+          - { id: 9,  name: "1-4: CLAIR DE LUNE",           secrets: 0, noChallenge: true }
+        secret_level: "1-S: THE WITLESS"
+
+      - name: "LAYER 2: LUST"
+        levels:
+          - { id: 10, name: "2-1: BRIDGEBURNER",             secrets: 5 }
+          - { id: 11, name: "2-2: DEATH AT 20,000 VOLTS",    secrets: 5 }
+          - { id: 12, name: "2-3: SHEER HEART ATTACK",       secrets: 5 }
+          - { id: 13, name: "2-4: COURT OF THE CORPSE KING", secrets: 0, noChallenge: true }
+        secret_level: "2-S: ALL-IMPERFECT LOVE SONG"
+
+      - name: "LAYER 3: GLUTTONY"
+        levels:
+          - { id: 14, name: "3-1: BELLY OF THE BEAST",       secrets: 5 }
+          - { id: 15, name: "3-2: IN THE FLESH",             secrets: 0, noChallenge: true }
+        secret_level: "P-1: SOUL SURVIVOR"   # prefix "P-" marks this as a prime sanctum
+
+  - name: "ACT II: IMPERFECT HATRED"
+    layers:
+      - name: "LAYER 4: GREED"
+        levels:
+          - { id: 16, name: "4-1: SLAVES TO POWER",          secrets: 5 }
+          - { id: 17, name: "4-2: GOD DAMN THE SUN",         secrets: 5 }
+          - { id: 18, name: "4-3: A SHOT IN THE DARK",       secrets: 5 }
+          - { id: 19, name: "4-4: CLAIR DE SOLEIL",          secrets: 0, noChallenge: true }
+        secret_level: "4-S: CLASH OF THE BRANDICOOT"
+
+      - name: "LAYER 5: WRATH"
+        levels:
+          - { id: 20, name: "5-1: IN THE WAKE OF POSEIDON",    secrets: 5 }
+          - { id: 21, name: "5-2: WAVES OF THE STARLESS SEA",  secrets: 5 }
+          - { id: 22, name: "5-3: SHIP OF FOOLS",              secrets: 5 }
+          - { id: 23, name: "5-4: LEVIATHAN",                  secrets: 0, noChallenge: true }
+        secret_level: "5-S: I ONLY SAY MORNING"
+
+      - name: "LAYER 6: HERESY"
+        levels:
+          - { id: 24, name: "6-1: CRY FOR THE WEEPER",       secrets: 5 }
+          - { id: 25, name: "6-2: AESTHETICS OF HATE",       secrets: 0, noChallenge: true }
+        secret_level: "P-2: WAIT OF THE WORLD"
+
+  - name: "ACT III: GODFIST SUICIDE"
+    layers:
+      - name: "LAYER 7: VIOLENCE"
+        levels:
+          - { id: 26, name: "7-1: GARDEN OF FORKING PATHS",     secrets: 5 }
+          - { id: 27, name: "7-2: LIGHT UP THE NIGHT",          secrets: 5 }
+          - { id: 28, name: "7-3: NO SOUND, NO MEMORY",         secrets: 5 }
+          - { id: 29, name: "7-4: ...LIKE ANTENNAS TO HEAVEN",  secrets: 5 }
+        secret_level: "7-S: HELL BATH NO FURY"
+
+      - name: "LAYER 8: FRAUD"
+        levels:
+          - { id: 30, name: "8-1: HURTBREAK WONDERLAND",    secrets: 5 }
+          - { id: 31, name: "8-2: THROUGH THE MIRROR",      secrets: 5 }
+          - { id: 32, name: "8-3: DISINTEGRATION LOOP",     secrets: 5 }
+          - { id: 33, name: "8-4: FINAL FLIGHT",            secrets: 5 }
+        secret_level: "8-S: ???"
+
+      - name: "LAYER 9: TREACHERY"
+        levels: []   # empty layer — no levels yet, will be filled when released
+        secret_level: "P-3: ???"   # placeholder prime sanctum
+
+  - name: "ENCORE"
+    layers:
+      - name: "ENCORE"
+        levels:
+          # Encore levels — `encore: true` is required. They never show
+          # a challenge checkbox regardless of noChallenge.
+          - { id: 100, name: "0-E: THIS HEAT, AN EVIL HEAT",   secrets: 0, encore: true }
+          - { id: 101, name: "1-E: ...THEN FELL THE ASHES",     secrets: 0, encore: true }
+        secret_level: "ENCORE PLACEHOLDER"   # "ENCORE" in the name marks it as an encore placeholder
+
+# -----------------------------------------------------------------------------
+# Prime Sanctums — special levels tracked by DifficultyData.prime_levels.
+# Each entry must also be referenced by exactly one layer's secret_level
+# above (with a "P-N:" prefix). They get their own "PRIME SANCTUMS"
+# section in the GUI tree.
+#
+# Fields:
+#   id:           REQUIRED. Same id space as regular levels.
+#   name:         REQUIRED. Display name (should match the layer's
+#                 secret_level string).
+#   prime_index:  REQUIRED. 0-based position in the prime_levels array
+#                 stored in difficulty<N>progress.bepis. P-1 = 0, P-2 = 1, etc.
+#   noChallenge:  OPTIONAL (default false). Same as regular levels.
+# -----------------------------------------------------------------------------
+prime_sanctums:
+  - { id: 666, name: "P-1: SOUL SURVIVOR",    prime_index: 0 }
+  - { id: 667, name: "P-2: WAIT OF THE WORLD", prime_index: 1 }
+  # When P-3 is released, add it here:
+  # - { id: 668, name: "P-3: ???", prime_index: 2 }
+
+# -----------------------------------------------------------------------------
+# Encore levels — also listed above under the ENCORE act, but tracked here
+# for the encore_index lookup. The loader merges encore_index into the act
+# LevelDefs automatically.
+#
+# Fields:
+#   id:             REQUIRED. Same id space as regular levels.
+#   name:           REQUIRED. Should match the ENCORE act entry.
+#   encore_index:   REQUIRED. 0-based index. 0-E = 0, 1-E = 1, etc.
+#   noChallenge:    OPTIONAL (default false). Has no effect for encore
+#                   levels (they never show a challenge checkbox anyway).
+# -----------------------------------------------------------------------------
+encore_levels:
+  - { id: 100, name: "0-E: THIS HEAT, AN EVIL HEAT",   encore_index: 0 }
+  - { id: 101, name: "1-E: ...THEN FELL THE ASHES",     encore_index: 1 }

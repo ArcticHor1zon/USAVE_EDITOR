@@ -33,6 +33,7 @@ class LevelDef:
     encore: bool = False
     prime_index: Optional[int] = None  # set for prime sanctums
     encore_index: Optional[int] = None  # set for encore levels
+    no_challenge: bool = False  # if True, hide the "Challenge done" checkbox
 
     @property
     def is_prime(self) -> bool:
@@ -44,7 +45,12 @@ class LevelDef:
 
     @property
     def has_challenge(self) -> bool:
-        return not self.is_encore
+        """Whether this level has a challenge that can be marked done.
+
+        Encore levels never have challenges. Levels flagged with
+        `noChallenge: true` in levels.yaml also don't have challenges.
+        """
+        return not self.is_encore and not self.no_challenge
 
 
 @dataclass(frozen=True)
@@ -186,6 +192,7 @@ class GameData:
                         name=lev["name"],
                         secrets=lev.get("secrets", 0),
                         encore=lev.get("encore", False),
+                        no_challenge=lev.get("noChallenge", False),
                     )
                     for lev in l.get("levels", [])
                 ]
@@ -202,6 +209,7 @@ class GameData:
                 name=p["name"],
                 secrets=0,
                 prime_index=p["prime_index"],
+                no_challenge=p.get("noChallenge", False),
             )
             for p in raw
         ]
@@ -215,6 +223,10 @@ class GameData:
                 secrets=0,
                 encore=True,
                 encore_index=e["encore_index"],
+                # Encore levels never have challenges anyway (has_challenge
+                # returns False for is_encore), but parse the flag for
+                # completeness in case someone sets it.
+                no_challenge=e.get("noChallenge", False),
             )
             for e in raw
         ]

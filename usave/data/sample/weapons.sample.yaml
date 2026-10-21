@@ -1,0 +1,101 @@
+# =============================================================================
+# SAMPLE weapons.yaml — reference template with every option documented.
+# =============================================================================
+#
+# Maps weapon types -> unlockable variants -> save file field names.
+# The `field` value is the field name in generalprogress.bepis that
+# stores the unlock state (1 = unlocked, 0 = locked).
+#
+# FIELD REFERENCE
+# ---------------
+#
+# Per weapon type entry (under top-level `weapon_types:` list):
+#
+#   name:                REQUIRED. String. Display name shown in the GUI.
+#                        Convention: singular form ("Revolver", "Shotgun").
+#
+#   customization_field: OPTIONAL (default null). String or null.
+#                        The field name in generalprogress.bepis that
+#                        stores whether the weapon's customization menu
+#                        is unlocked (bool). Set to null for weapons
+#                        that have no customization (e.g. the Arm).
+#                        If null, no "Customizable:" checkbox appears.
+#
+#   variants:            REQUIRED (can be empty list). List of variant
+#                        entries.
+#
+# Per variant entry (under a weapon type's `variants:` list):
+#
+#   name:   REQUIRED. String. Display name of the variant. Convention:
+#           "Variant Name" (e.g. "Piercer Revolver", "Knuckleblaster").
+#
+#   field:  REQUIRED. String. The field name in generalprogress.bepis
+#           that stores this variant's unlock state (int, 1 = unlocked,
+#           0 = locked). Look this up in the game's decompiled source
+#           or by inspecting a save file with the editor after unlocking
+#           the variant in-game.
+#
+# To add a new weapon variant when ULTRAKILL updates:
+#   1. Find the weapon type it belongs to (e.g. "Revolver").
+#   2. Add a new entry under its `variants:` list:
+#        - { name: "Cool New Revolver", field: "rev4" }
+#   3. Save and restart the editor.
+#
+# Field naming convention used by the game (for reference when picking
+# a new `field` value):
+#   rev*    = revolver
+#   sho*    = shotgun
+#   nai*    = nailgun
+#   rai*    = railgun
+#   rock*   = rocket launcher
+#   arm*    = arm (Knuckleblaster, Whiplash, etc.)
+#   beam*   = revolver beam color (cosmetic, not used here)
+# =============================================================================
+
+weapon_types:
+  # First entry — long-form syntax showing all fields:
+  - name: "Revolver"
+    customization_field: "revCustomizationUnlocked"   # null here would hide the "Customizable:" checkbox
+    variants:
+      - { name: "Piercer Revolver",       field: "rev0" }
+      - { name: "Marksman Revolver",      field: "rev1" }
+      - { name: "Sharpshooter Revolver",  field: "rev2" }
+      - { name: "Alternate Revolver",     field: "revalt" }
+
+  # Subsequent entries — compact short-form syntax:
+  - name: "Shotgun"
+    customization_field: "shoCustomizationUnlocked"
+    variants:
+      - { name: "Core Eject Shotgun",     field: "sho0" }
+      - { name: "Pump Charge Shotgun",    field: "sho1" }
+      - { name: "Sawed-On Shotgun",       field: "sho2" }
+      - { name: "Jackhammer",             field: "shoalt" }
+
+  - name: "Nailgun"
+    customization_field: "naiCustomizationUnlocked"
+    variants:
+      - { name: "Attractor Nailgun",      field: "nai0" }
+      - { name: "Overheat Nailgun",       field: "nai1" }
+      - { name: "Jumpstart Nailgun",      field: "nai2" }
+      - { name: "Sawblade Launcher",      field: "naialt" }
+
+  - name: "Railgun"
+    customization_field: "raiCustomizationUnlocked"
+    variants:
+      - { name: "Electric Railgun",       field: "rai0" }
+      - { name: "Malicious Railgun",      field: "rai1" }
+      - { name: "Screwdriver Railgun",    field: "rai2" }
+
+  - name: "Rocket Launcher"
+    customization_field: "rockCustomizationUnlocked"
+    variants:
+      - { name: "Freezeframe Rocket Launcher",   field: "rock0" }
+      - { name: "S.R.S. Cannon Rocket Launcher", field: "rock1" }
+      - { name: "Firestarter Rocket Launcher",   field: "rock2" }
+
+  # Weapon with NO customization menu — customization_field is null:
+  - name: "Arm"
+    customization_field: null
+    variants:
+      - { name: "Knuckleblaster",  field: "arm1" }
+      - { name: "Whiplash",        field: "arm2" }
